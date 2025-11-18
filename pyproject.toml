@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "project_backend"
+name = "general_backend"
 version = "0.1.0"
 description = "A backend project for my personal use."
 authors = [

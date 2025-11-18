@@ -2,7 +2,7 @@
 
 import re
 
-from reversclim.utils.general.setup_logging import get_logger
+from general_backend.logging.setup_logging import get_logger
 
 logger = get_logger(__name__)
 

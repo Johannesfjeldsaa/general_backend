@@ -47,3 +47,7 @@ flake8 .                 # Check style/errors
 mypy src/                # Type checking
 pytest                   # Run tests
 ```
+or as a one-liner
+```bash
+black --check . && isort --check-only . && flake8 . && mypy src/ && echo "✅ All code quality checks passed!"
+```
