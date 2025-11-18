@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "project_backend"
+version = "0.1.0"
+description = "A backend project for my personal use."
+authors = [
+    {name = "Johannes Fjeldså"}
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy",
+    "xarray",
+    "matplotlib",
+    "regionmask",
+    "cartopy",
+    "dask",
+    "cftime",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "flake8",
+    "isort",
+    "mypy"
+]
+# Using dev dependencies:
+# Run quality checks
+#black --check .          # Check formatting
+#isort --check-only .     # Check import sorting
+#flake8 .                 # Check style/errors
+#mypy src/                # Type checking
+#pytest                   # Run tests
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+disallow_untyped_defs = false
+strict_optional = true

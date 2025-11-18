@@ -1,0 +1,13 @@
+{
+  // Use Pylance as the language server for Python
+  "python.languageServer": "Pylance",
+
+  // Strictness level for type checking
+  "python.analysis.typeCheckingMode": "standard",
+
+  // Add the 'src' directory to the analysis paths
+  "python.analysis.extraPaths": ["src"],
+
+  // How noisy missing stubs diagnostics are
+  "python.analysis.reportMissingTypeStubs": "warning"
+}
