@@ -30,13 +30,6 @@ dev = [
     "isort",
     "mypy"
 ]
-# Using dev dependencies:
-# Run quality checks
-#black --check .          # Check formatting
-#isort --check-only .     # Check import sorting
-#flake8 .                 # Check style/errors
-#mypy src/                # Type checking
-#pytest                   # Run tests
 
 [tool.setuptools.packages.find]
 where = ["src"]
