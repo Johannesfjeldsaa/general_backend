@@ -23,13 +23,12 @@ from pathlib import Path
 from typing import Union, Any
 
 from general_backend.logging.setup_logging import get_logger
+
 logger = get_logger(__name__)
 
+
 def validate_file(
-    file_path:          Path,
-    expected_suffix:    str | list[str],
-    description:        str,
-    new_file:           bool
+    file_path: Path, expected_suffix: str | list[str], description: str, new_file: bool
 ):
     if isinstance(expected_suffix, str):
         expected_suffix = [expected_suffix]
@@ -41,10 +40,13 @@ def validate_file(
     else:
         if not new_file and not file_path.exists():
             traceback.print_stack()
-            raise SystemExit(f"ERROR: {file_path} does not exist. Please provide a valid file path.")
+            raise SystemExit(
+                f"ERROR: {file_path} does not exist. Please provide a valid file path."
+            )
+
 
 def check_filepath(
-    file_path:          Union[str, Path],
+    file_path: Union[str, Path],
     overwrite: bool | str,
 ) -> bool:
     """Check how to handle the file path for saving content.
@@ -71,14 +73,18 @@ def check_filepath(
     write = True
     if file_path.exists():
         prompt_msg = f"File {file_path.name} already exists at {file_path.parent}."
-        positive_msg = f"File {file_path.name} will be overwritten at {file_path.parent}."
-        negative_msg = f"File {file_path.name} already exists at {file_path.parent}. " \
+        positive_msg = (
+            f"File {file_path.name} will be overwritten at {file_path.parent}."
+        )
+        negative_msg = (
+            f"File {file_path.name} already exists at {file_path.parent}. "
             f"If you want to overwrite change the file name or set overwrite to True."
+        )
         write = overwrite_handler(
             overwrite,
             prompt_msg=prompt_msg,
             positive_msg=positive_msg,
-            negative_msg=negative_msg
+            negative_msg=negative_msg,
         )
     if write and not file_path.parent.exists():
         file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -86,10 +92,9 @@ def check_filepath(
 
     return write
 
+
 def check_variable_overwrite(
-    ds:         xr.Dataset,
-    var_name:   str,
-    overwrite:  bool | str
+    ds: xr.Dataset, var_name: str, overwrite: bool | str
 ) -> bool:
     """Check if a variable can be saved in an xarray dataset.
 
@@ -114,23 +119,23 @@ def check_variable_overwrite(
     # default write to True, if the variable exists, we will check if we can overwrite it
     write = True
     if var_name in ds.data_vars:
-        prompt_msg=f"Variable {var_name} already exists in the dataset."
+        prompt_msg = f"Variable {var_name} already exists in the dataset."
         positive_msg = f"Variable {var_name} will be overwritten in the dataset."
-        negative_msg = f"Variable {var_name} already exists in the dataset. " \
-                       f"If you want to overwrite set overwrite to True."
+        negative_msg = (
+            f"Variable {var_name} already exists in the dataset. "
+            f"If you want to overwrite set overwrite to True."
+        )
         write = overwrite_handler(
             overwrite,
             prompt_msg=prompt_msg,
             positive_msg=positive_msg,
-            negative_msg=negative_msg
+            negative_msg=negative_msg,
         )
     return write
 
+
 def overwrite_handler(
-    overwrite: bool | str,
-    prompt_msg: str,
-    positive_msg: str,
-    negative_msg: str
+    overwrite: bool | str, prompt_msg: str, positive_msg: str, negative_msg: str
 ) -> bool:
     """Decide whether to overwrite based on input value or prompt.
 
@@ -163,10 +168,7 @@ def overwrite_handler(
         logger.debug(negative_msg)
         return False
     elif overwrite == "prompt":
-        response = input(
-            f"{prompt_msg}\n"
-            "Overwrite? (y/n): "
-        ).strip().lower()
+        response = input(f"{prompt_msg}\n" "Overwrite? (y/n): ").strip().lower()
 
         if response == "y":
             logger.info(positive_msg)
@@ -179,11 +181,8 @@ def overwrite_handler(
         logger.error(err_msg)
         raise ValueError(err_msg)
 
-def save_figure(
-    fig: Any,
-    file_path: Union[str, Path],
-    overwrite: bool | str
-) -> bool:
+
+def save_figure(fig: Any, file_path: Union[str, Path], overwrite: bool | str) -> bool:
     """Save a matplotlib figure to a specified file path.
 
     Parameters
@@ -207,10 +206,9 @@ def save_figure(
         return True
     return False
 
+
 def save_xarray_to_netcdf(
-    dataset: xr.Dataset,
-    file_path: Union[str, Path],
-    overwrite: bool | str
+    dataset: xr.Dataset, file_path: Union[str, Path], overwrite: bool | str
 ) -> bool:
     """Save a xarray dataset to NetCDF at a specified file path.
 

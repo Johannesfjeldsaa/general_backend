@@ -19,5 +19,5 @@ __all__ = ["logger", "PACKAGE_LOGGER_NAME"]
 
 # get src and project root paths
 _current_file_path = Path(__file__).resolve()
-SRC_PATH = _current_file_path.parent.parent # src
-PROJECT_ROOT_PATH = SRC_PATH.parent # project root
+SRC_PATH = _current_file_path.parent.parent  # src
+PROJECT_ROOT_PATH = SRC_PATH.parent  # project root

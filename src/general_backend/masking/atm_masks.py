@@ -6,8 +6,11 @@ import xarray as xr
 from regionmask.defined_regions import ar6
 
 from reversclim.utils.general.masking.mask_utils import (
-    _create_coord_mask, threshold_float_mask, boolean_mask,
-    union_of_masks, intersection_of_masks
+    _create_coord_mask,
+    threshold_float_mask,
+    boolean_mask,
+    union_of_masks,
+    intersection_of_masks,
 )
 from reversclim.utils.general.setup_logging import get_logger
 
@@ -15,13 +18,14 @@ from reversclim.utils.general.setup_logging import get_logger
 # set up logging
 logger = get_logger(__name__)
 
+
 def create_longitude_mask(
-    data:           xr.DataArray | xr.Dataset,
-    longitudes:     np.ndarray | list[float] | tuple[float, float],
-    mask_name:      str,
-    dim:            str = 'lon',
-    valid_range:    tuple[float, float]=(0, 360),
-    range_mode:     str = 'exclusive'
+    data: xr.DataArray | xr.Dataset,
+    longitudes: np.ndarray | list[float] | tuple[float, float],
+    mask_name: str,
+    dim: str = "lon",
+    valid_range: tuple[float, float] = (0, 360),
+    range_mode: str = "exclusive",
 ) -> xr.DataArray:
     """Creates a mask for the specified longitudes along a given dimension.
 
@@ -77,16 +81,17 @@ def create_longitude_mask(
         valid_range=valid_range,
         range_mode=range_mode,
         coord_name="lon",
-        mask_name=mask_name
+        mask_name=mask_name,
     )
 
+
 def create_latitude_mask(
-    data:           xr.DataArray | xr.Dataset,
-    latitudes:      np.ndarray | list[float] | tuple[float, float],
-    mask_name:      str,
-    dim:            str = 'lat',
-    valid_range:    tuple[float, float] = (-90, 90),
-    range_mode:     str = 'exclusive'
+    data: xr.DataArray | xr.Dataset,
+    latitudes: np.ndarray | list[float] | tuple[float, float],
+    mask_name: str,
+    dim: str = "lat",
+    valid_range: tuple[float, float] = (-90, 90),
+    range_mode: str = "exclusive",
 ) -> xr.DataArray:
     """Creates a mask for the specified latitudes along a given dimension.
 
@@ -142,14 +147,15 @@ def create_latitude_mask(
         valid_range=valid_range,
         range_mode=range_mode,
         coord_name="lat",
-        mask_name=mask_name
+        mask_name=mask_name,
     )
 
+
 def create_sea_mask(
-    data:               xr.DataArray | xr.Dataset,
+    data: xr.DataArray | xr.Dataset,
     fraction_threshold: float = 0.8,
-    sea_frac_data:      xr.DataArray | None = None,
-    land_frac_data:     xr.DataArray | None = None
+    sea_frac_data: xr.DataArray | None = None,
+    land_frac_data: xr.DataArray | None = None,
 ) -> xr.DataArray:
     """Creates a mask for the sea surface type.
 
@@ -178,32 +184,33 @@ def create_sea_mask(
         logger.debug("No sea fraction data provided, checking for land fraction data.")
         if land_frac_data is None:
             raise ValueError("Both sea_frac_data and land_frac_data are None.")
-        if 'time' in land_frac_data.dims:
-            land_frac_data = land_frac_data.squeeze(dim='time')
+        if "time" in land_frac_data.dims:
+            land_frac_data = land_frac_data.squeeze(dim="time")
         sea_frac_data = 1 - land_frac_data
         logger.debug("Sea fraction data computed as inverse of land fraction data.")
     else:
-        if 'time' in sea_frac_data.dims:
-            sea_frac_data = sea_frac_data.squeeze(dim='time')
+        if "time" in sea_frac_data.dims:
+            sea_frac_data = sea_frac_data.squeeze(dim="time")
 
     thresholded = threshold_float_mask(sea_frac_data, fraction_threshold)
 
     # add attributes to the mask
-    thresholded.attrs['mask_name'] = 'sea_surface_mask'
-    thresholded.attrs['fraction_threshold'] = fraction_threshold
-    thresholded.attrs['mask_type'] = 'surface_type_mask'
-    thresholded.attrs['mask_description'] = (
+    thresholded.attrs["mask_name"] = "sea_surface_mask"
+    thresholded.attrs["fraction_threshold"] = fraction_threshold
+    thresholded.attrs["mask_type"] = "surface_type_mask"
+    thresholded.attrs["mask_description"] = (
         "A mask indicating the presence of sea surface type based on a "
         "fraction threshold of {:.1f} %.".format(fraction_threshold * 100)
     )
 
     return thresholded
 
+
 def create_land_mask(
     data: xr.DataArray | xr.Dataset,
     fraction_threshold: float = 0.8,
     land_frac_data: xr.DataArray | None = None,
-    sea_frac_data: xr.DataArray | None = None
+    sea_frac_data: xr.DataArray | None = None,
 ) -> xr.DataArray:
     """Creates a mask for the land surface type.
 
@@ -232,31 +239,31 @@ def create_land_mask(
         logger.debug("No land fraction data provided, checking for sea fraction data.")
         if sea_frac_data is None:
             raise ValueError("Both land_frac_data and sea_frac_data are None.")
-        if 'time' in sea_frac_data.dims:
+        if "time" in sea_frac_data.dims:
             # remove time dimension if present
             sea_frac_data = sea_frac_data.isel(time=0, drop=True)
         land_frac_data = 1 - sea_frac_data
         logger.debug("Land fraction data computed as inverse of sea fraction data.")
 
-    if 'time' in land_frac_data.dims:
+    if "time" in land_frac_data.dims:
         land_frac_data = land_frac_data.isel(time=0, drop=True)
 
     thresholded = threshold_float_mask(land_frac_data, fraction_threshold)
 
     # add attributes to the mask
-    thresholded.attrs['mask_name'] = 'land_surface_mask'
-    thresholded.attrs['fraction_threshold'] = fraction_threshold
-    thresholded.attrs['mask_type'] = 'surface_type_mask'
-    thresholded.attrs['mask_description'] = (
+    thresholded.attrs["mask_name"] = "land_surface_mask"
+    thresholded.attrs["fraction_threshold"] = fraction_threshold
+    thresholded.attrs["mask_type"] = "surface_type_mask"
+    thresholded.attrs["mask_description"] = (
         "A mask indicating the presence of land surface type based on a "
         "fraction threshold of {:.1f} %.".format(fraction_threshold * 100)
     )
 
     return thresholded
 
+
 def create_ar6_region_mask(
-    data: xr.DataArray | xr.Dataset,
-    region_abbrev: str
+    data: xr.DataArray | xr.Dataset, region_abbrev: str
 ) -> xr.DataArray:
     """Creates a mask for a specified AR6 region.
 
@@ -281,43 +288,45 @@ def create_ar6_region_mask(
     mask = boolean_mask(mask)
 
     # add attributes to the mask
-    mask.attrs['mask_name'] = f'AR6_{region_abbrev}_mask'
-    mask.attrs['mask_type'] = 'region_mask'
-    mask.attrs['mask_description'] = (
+    mask.attrs["mask_name"] = f"AR6_{region_abbrev}_mask"
+    mask.attrs["mask_type"] = "region_mask"
+    mask.attrs["mask_description"] = (
         f"A mask indicating the presence of the AR6 region '{region_abbrev}'."
     )
 
     return mask
 
+
 ar6_regions = list(ar6.all.abbrevs)
 implemented_masks = [
-    'global',
-    'NH_polar',
-    'NH_midlat',
-    'NH_tropics',
-    'tropics',
-    'SH_polar',
-    'SH_midlat',
-    'SH_tropics',
-    'land',
-    'ocean',
+    "global",
+    "NH_polar",
+    "NH_midlat",
+    "NH_tropics",
+    "tropics",
+    "SH_polar",
+    "SH_midlat",
+    "SH_tropics",
+    "land",
+    "ocean",
 ]
 implemented_masks.extend(ar6_regions)
 mask_latbnds_mapping = {
-    'NH_polar': (60, 90),
-    'NH_midlat': (30, 60),
-    'NH_tropics': (0, 30),
-    'tropics': (-30, 30),
-    'SH_polar': (-90, -60),
-    'SH_midlat': (-60, -30),
-    'SH_tropics': (-30, 0),
+    "NH_polar": (60, 90),
+    "NH_midlat": (30, 60),
+    "NH_tropics": (0, 30),
+    "tropics": (-30, 30),
+    "SH_polar": (-90, -60),
+    "SH_midlat": (-60, -30),
+    "SH_tropics": (-30, 0),
 }
+
 
 def _create_an_implemented_mask(
     dataset: xr.Dataset,
     mask_name: str,
     landfrac_mask: xr.DataArray | None = None,
-    oceanfrac_mask: xr.DataArray | None = None
+    oceanfrac_mask: xr.DataArray | None = None,
 ):
     """
     Create a mask based on the provided mask name.
@@ -334,46 +343,50 @@ def _create_an_implemented_mask(
     xr.DataArray
         The created mask as a boolean DataArray.
     """
-    if mask_name == 'global':
+    if mask_name == "global":
         # same lat and lon as dataset
         # then we make a boolean mask of all True values
-        return boolean_mask(xr.DataArray(
-            data=np.ones_like(dataset['lat']),
-            coords={'lat': dataset['lat']},
-            dims=['lat'],
-            attrs={
-                'mask_name': 'global_mask',
-                'mask_type': 'global_mask',
-                'mask_description': 'A global mask including all latitudes.'
-            }
-        ))
+        return boolean_mask(
+            xr.DataArray(
+                data=np.ones_like(dataset["lat"]),
+                coords={"lat": dataset["lat"]},
+                dims=["lat"],
+                attrs={
+                    "mask_name": "global_mask",
+                    "mask_type": "global_mask",
+                    "mask_description": "A global mask including all latitudes.",
+                },
+            )
+        )
     elif mask_name in mask_latbnds_mapping:
         latbnds = mask_latbnds_mapping[mask_name]
         return create_latitude_mask(
             dataset,
             latitudes=latbnds,
             mask_name=mask_name,
-            dim='lat',
+            dim="lat",
             valid_range=(-90, 90),
-            range_mode='exclusive'
+            range_mode="exclusive",
         )
-    elif mask_name == 'land':
+    elif mask_name == "land":
         if any(mask is not None for mask in [landfrac_mask, oceanfrac_mask]):
             return create_land_mask(
-                dataset, fraction_threshold=0.8,
+                dataset,
+                fraction_threshold=0.8,
                 land_frac_data=landfrac_mask,
-                sea_frac_data=oceanfrac_mask
+                sea_frac_data=oceanfrac_mask,
             )
         else:
             err_msg = "to create the land mask provide either 'landfrac_mask' or 'oceanfrac_mask'"
             logger.error(err_msg)
             raise ValueError(err_msg)
-    elif mask_name == 'ocean':
+    elif mask_name == "ocean":
         if any(mask is not None for mask in [landfrac_mask, oceanfrac_mask]):
             return create_sea_mask(
-                dataset, fraction_threshold=0.8,
+                dataset,
+                fraction_threshold=0.8,
                 land_frac_data=landfrac_mask,
-                sea_frac_data=oceanfrac_mask
+                sea_frac_data=oceanfrac_mask,
             )
         else:
             err_msg = "to create the ocean mask provide either 'landfrac_mask' or 'oceanfrac_mask'"
@@ -383,13 +396,16 @@ def _create_an_implemented_mask(
         return create_ar6_region_mask(dataset, region_abbrev=mask_name)
     else:
         implemented_masks_str = f",\n".join(implemented_masks)
-        raise ValueError(f"Mask '{mask_name}' is not implemented. Use one of {implemented_masks_str}.")
+        raise ValueError(
+            f"Mask '{mask_name}' is not implemented. Use one of {implemented_masks_str}."
+        )
+
 
 def create_masks(
-    dataset:            xr.Dataset,
-    masks:              list[str],
-    landfrac_mask:      xr.DataArray | None = None,
-    oceanfrac_mask:     xr.DataArray | None = None
+    dataset: xr.Dataset,
+    masks: list[str],
+    landfrac_mask: xr.DataArray | None = None,
+    oceanfrac_mask: xr.DataArray | None = None,
 ):
     """_summary_
 
@@ -424,19 +440,20 @@ def create_masks(
     for mask in masks:
         if isinstance(mask, str):
             if mask in implemented_masks:
-                logger.info(f'Attempting to create mask {mask}')
+                logger.info(f"Attempting to create mask {mask}")
 
                 created_masks[mask] = _create_an_implemented_mask(
-                    dataset, mask,
+                    dataset,
+                    mask,
                     landfrac_mask=landfrac_mask,
-                    oceanfrac_mask=oceanfrac_mask
+                    oceanfrac_mask=oceanfrac_mask,
                 )
-                logger.info(f'Created mask {mask}')
+                logger.info(f"Created mask {mask}")
             else:
                 # check if it is a combination mask
-                if '&' in mask:
+                if "&" in mask:
                     AND_masks.append(mask)
-                elif '|' in mask:
+                elif "|" in mask:
                     OR_masks.append(mask)
                 else:
                     err_msg = f"Mask '{mask}' is not implemented and is not a combination mask."
@@ -448,10 +465,9 @@ def create_masks(
             raise TypeError(err_msg)
 
     for mask_string, operation in zip(
-        [*AND_masks, *OR_masks],
-        ['&'] * len(AND_masks) + ['|'] * len(OR_masks)
+        [*AND_masks, *OR_masks], ["&"] * len(AND_masks) + ["|"] * len(OR_masks)
     ):
-        logger.info(f'Attempting to create mask {mask_string}')
+        logger.info(f"Attempting to create mask {mask_string}")
 
         mask_tuple = tuple(mask_string.split(operation))
         for mask in mask_tuple:
@@ -465,18 +481,20 @@ def create_masks(
                 raise ValueError(err_msg)
         # combine the masks
         try:
-            if operation == '|':
+            if operation == "|":
                 created_masks[mask_string] = union_of_masks(
                     *[created_masks[m] for m in mask_tuple]
                 )
-                logger.info(f'Create mask {mask_string}')
-            elif operation == '&':
+                logger.info(f"Create mask {mask_string}")
+            elif operation == "&":
                 created_masks[mask_string] = intersection_of_masks(
                     *[created_masks[m] for m in mask_tuple]
                 )
-                logger.info(f'Create mask {mask_string}')
+                logger.info(f"Create mask {mask_string}")
         except Exception as err:
-            mask_tuple_as_str = ';'.join([f"{mask}: \n{created_masks[mask]}" for mask in mask_tuple])
+            mask_tuple_as_str = ";".join(
+                [f"{mask}: \n{created_masks[mask]}" for mask in mask_tuple]
+            )
             err_msg = f"Error combining masks for '{mask_string}': {err} \n \
 Please ensure all masks are compatible for combination - mask elements: {mask_tuple_as_str}"
             logger.error(err_msg, stack_info=True)

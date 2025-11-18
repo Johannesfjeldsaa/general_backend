@@ -20,9 +20,8 @@
 import logging
 from general_backend import PACKAGE_LOGGER_NAME
 
-def get_logger(
-    name:   str | None = None
-) -> logging.Logger:
+
+def get_logger(name: str | None = None) -> logging.Logger:
     """Return a package-scoped logger.
     Example: get_logger('module') -> 'reversclim.module'
 
@@ -44,10 +43,8 @@ def get_logger(
 
     return logging.getLogger(logger_name)
 
-def set_logger_level_for_dependency(
-    dependency_name:   str,
-    level:             int
-) -> None:
+
+def set_logger_level_for_dependency(dependency_name: str, level: int) -> None:
     """Set the logging level for a specific dependency package.
 
     Parameters
@@ -60,6 +57,7 @@ def set_logger_level_for_dependency(
     logger = logging.getLogger(dependency_name)
     logger.setLevel(level)
 
+
 log_config_msg = """
 Configuring default logging for general_backend package:
 * Package logger level: {pckg_level}
@@ -69,11 +67,12 @@ set_logger_level_for_dependency importable from
 general_backend.utils.general.setup_logging.py.
 """
 
+
 def configure_default_logging(
-    pckg_level:         int = logging.INFO,
-    fmt:                str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    root_level:         int = logging.WARNING,
-    supress_log_config_msg: bool = False
+    pckg_level: int = logging.INFO,
+    fmt: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    root_level: int = logging.WARNING,
+    supress_log_config_msg: bool = False,
 ) -> None:
     """Configure default logging for the general_backend package and root logger.
 
@@ -108,7 +107,11 @@ def configure_default_logging(
             pkg_logger.removeHandler(h)
 
     handler = logging.StreamHandler()
-    fmt_to_use = fmt if fmt is not None else "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    fmt_to_use = (
+        fmt
+        if fmt is not None
+        else "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     handler.setFormatter(logging.Formatter(fmt_to_use))
     handler.setLevel(pckg_level)
     pkg_logger.addHandler(handler)
@@ -118,6 +121,4 @@ def configure_default_logging(
     pkg_logger.propagate = False
 
     if not supress_log_config_msg:
-        print(log_config_msg.format(
-            pckg_level=pckg_level, root_level=root_level)
-        )
+        print(log_config_msg.format(pckg_level=pckg_level, root_level=root_level))

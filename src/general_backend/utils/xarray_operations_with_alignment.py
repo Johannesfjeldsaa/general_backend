@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 # Source code
 # ---
 
+
 def _check_align_kwargs(align_kwargs: dict | None) -> dict:
     """Check and set default alignment kwargs. Local helper function.
 
@@ -40,7 +41,7 @@ def _check_align_kwargs(align_kwargs: dict | None) -> dict:
         If align_kwargs is not the expected type.
     """
     if align_kwargs is None:
-        align_kwargs = {"join": "exact", 'copy': True}
+        align_kwargs = {"join": "exact", "copy": True}
     else:
         if not isinstance(align_kwargs, dict):
             err_msg = "align_kwargs must be a dictionary or None."
@@ -49,9 +50,9 @@ def _check_align_kwargs(align_kwargs: dict | None) -> dict:
 
     return align_kwargs
 
+
 def check_alignment(
-    *args:          xr.DataArray | xr.Dataset,
-    align_kwargs:   dict | None = None
+    *args: xr.DataArray | xr.Dataset, align_kwargs: dict | None = None
 ) -> tuple[xr.DataArray | xr.Dataset, ...] | bool:
     """Check if multiple xarray objects are aligned according to the specified alignment method.
     Default kwargs sets xr.align's join to 'exact' to raise an error if coordinates do not match exactly.
@@ -79,20 +80,21 @@ def check_alignment(
     tuple[xr.DataArray | xr.Dataset, ...] | bool
         Tuple of aligned objects if all objects are aligned according to the specified method, False otherwise.
     """
-    align_kwargs = _check_align_kwargs(align_kwargs) # set default align_kwargs if None and check type
+    align_kwargs = _check_align_kwargs(
+        align_kwargs
+    )  # set default align_kwargs if None and check type
 
     try:
         aligned = xr.align(*args, **align_kwargs)
-        logger.debug('Aligned datasets sucessfull')
+        logger.debug("Aligned datasets sucessfull")
         return aligned
     except ValueError:
-        logger.debug('Aligned datasets failed')
+        logger.debug("Aligned datasets failed")
         return False
 
+
 def _operation_with_alignment(
-    *args:          xr.DataArray | xr.Dataset,
-    operation:      str,
-    align_kwargs:   dict | None = None
+    *args: xr.DataArray | xr.Dataset, operation: str, align_kwargs: dict | None = None
 ) -> xr.DataArray | xr.Dataset:
     """Perform an operation on two (or more) xarray objects with alignment.
     Default kwargs sets xr.align's join to 'exact' to raise an error if coordinates do not match exactly.
@@ -117,19 +119,27 @@ def _operation_with_alignment(
 
     align_kwargs = _check_align_kwargs(align_kwargs)
 
-    aligned: tuple[xr.DataArray | xr.Dataset, ...] | bool = check_alignment(*args, align_kwargs=align_kwargs)
+    aligned: tuple[xr.DataArray | xr.Dataset, ...] | bool = check_alignment(
+        *args, align_kwargs=align_kwargs
+    )
     if aligned is False:
-        raise ValueError("Input xarray objects are not aligned according to join='{align_kwargs.get('join', 'exact')}'.")
+        raise ValueError(
+            "Input xarray objects are not aligned according to join='{align_kwargs.get('join', 'exact')}'."
+        )
     if not isinstance(aligned, tuple):
-        raise ValueError("Unexpected error during alignment check. Returned value is not a tuple nor False.")
+        raise ValueError(
+            "Unexpected error during alignment check. Returned value is not a tuple nor False."
+        )
 
-    cls = type(aligned[0]) # type of the first argument (DataArray or Dataset) to use its methods
+    cls = type(
+        aligned[0]
+    )  # type of the first argument (DataArray or Dataset) to use its methods
     operations = {
-        'add': cls.__add__,
-        'subtract': cls.__sub__,
-        'multiply': cls.__mul__,
-        'divide': cls.__truediv__,
-        'power': cls.__pow__,
+        "add": cls.__add__,
+        "subtract": cls.__sub__,
+        "multiply": cls.__mul__,
+        "divide": cls.__truediv__,
+        "power": cls.__pow__,
     }
 
     if operation not in operations:
@@ -137,9 +147,10 @@ def _operation_with_alignment(
 
     return operations[operation](*aligned)  # type: ignore
 
+
 def multiply_with_alignment(
-    *args:          xr.DataArray | xr.Dataset,
-    align_kwargs:   dict | None = None,
+    *args: xr.DataArray | xr.Dataset,
+    align_kwargs: dict | None = None,
 ) -> xr.DataArray | xr.Dataset:
     """Multiply two or more xarray objects with alignment.
 
@@ -157,12 +168,15 @@ def multiply_with_alignment(
     xr.DataArray | xr.Dataset
         Result of the multiplication with aligned coordinates.
     """
-    return _operation_with_alignment(*args, operation='multiply', align_kwargs=align_kwargs)
+    return _operation_with_alignment(
+        *args, operation="multiply", align_kwargs=align_kwargs
+    )
+
 
 def divide_with_alignment(
-    a:              xr.DataArray | xr.Dataset,
-    b:              xr.DataArray | xr.Dataset,
-    align_kwargs:   dict | None = None,
+    a: xr.DataArray | xr.Dataset,
+    b: xr.DataArray | xr.Dataset,
+    align_kwargs: dict | None = None,
 ) -> xr.DataArray | xr.Dataset:
     """Divide one xarray object by another with alignment.
 
@@ -183,11 +197,14 @@ def divide_with_alignment(
         Result of the division with aligned coordinates.
     """
 
-    return _operation_with_alignment(a, b, operation='divide', align_kwargs=align_kwargs)
+    return _operation_with_alignment(
+        a, b, operation="divide", align_kwargs=align_kwargs
+    )
+
 
 def add_with_alignment(
-    *args:          xr.DataArray | xr.Dataset,
-    align_kwargs:   dict | None = None,
+    *args: xr.DataArray | xr.Dataset,
+    align_kwargs: dict | None = None,
 ) -> xr.DataArray | xr.Dataset:
     """Add two or more xarray objects with alignment.
 
@@ -205,12 +222,13 @@ def add_with_alignment(
     xr.DataArray | xr.Dataset
         Result of the addition with aligned coordinates.
     """
-    return _operation_with_alignment(*args, operation='add', align_kwargs=align_kwargs)
+    return _operation_with_alignment(*args, operation="add", align_kwargs=align_kwargs)
+
 
 def subtract_with_alignment(
-    a:              xr.DataArray | xr.Dataset,
-    b:              xr.DataArray | xr.Dataset,
-    align_kwargs:   dict | None = None,
+    a: xr.DataArray | xr.Dataset,
+    b: xr.DataArray | xr.Dataset,
+    align_kwargs: dict | None = None,
 ) -> xr.DataArray | xr.Dataset:
     """Subtract one xarray object from another one with alignment.
 
@@ -230,12 +248,15 @@ def subtract_with_alignment(
     xr.DataArray | xr.Dataset
         Result of the subtraction with aligned coordinates.
     """
-    return _operation_with_alignment(a, b, operation='subtract', align_kwargs=align_kwargs)
+    return _operation_with_alignment(
+        a, b, operation="subtract", align_kwargs=align_kwargs
+    )
+
 
 def power_with_alignment(
-    a:              xr.DataArray | xr.Dataset,
-    b:              xr.DataArray | xr.Dataset,
-    align_kwargs:   dict | None = None,
+    a: xr.DataArray | xr.Dataset,
+    b: xr.DataArray | xr.Dataset,
+    align_kwargs: dict | None = None,
 ) -> xr.DataArray | xr.Dataset:
     """Raise one xarray object to the power of another with alignment.
 
@@ -255,12 +276,13 @@ def power_with_alignment(
     xr.DataArray | xr.Dataset
         Result of a raised to the power of b with aligned coordinates.
     """
-    return _operation_with_alignment(a, b, operation='power', align_kwargs=align_kwargs)
+    return _operation_with_alignment(a, b, operation="power", align_kwargs=align_kwargs)
+
 
 def broadcast_with_alignment(
-    *args:              xr.DataArray | xr.Dataset,
-    align_kwargs:       dict | None = None,
-    broadcast_kwargs:   dict | None = None
+    *args: xr.DataArray | xr.Dataset,
+    align_kwargs: dict | None = None,
+    broadcast_kwargs: dict | None = None,
 ) -> tuple[xr.DataArray | xr.Dataset, ...]:
     """Broadcast *args using xr.broadcast. First check if all input xarray objects are aligned.
 
@@ -292,11 +314,17 @@ def broadcast_with_alignment(
         if not isinstance(broadcast_kwargs, dict):
             raise ValueError("broadcast_kwargs must be a dictionary or None.")
 
-    aligned: tuple[xr.DataArray | xr.Dataset, ...] | bool = check_alignment(*args, align_kwargs=align_kwargs)
+    aligned: tuple[xr.DataArray | xr.Dataset, ...] | bool = check_alignment(
+        *args, align_kwargs=align_kwargs
+    )
     if aligned is False:
-        raise ValueError("Input xarray objects are not aligned according to the specified method.")
+        raise ValueError(
+            "Input xarray objects are not aligned according to the specified method."
+        )
 
     if isinstance(aligned, tuple):
         return xr.broadcast(*aligned, **broadcast_kwargs)
     else:
-        raise ValueError("Unexpected error during alignment check. Returned value is not a tuple nor False.")
+        raise ValueError(
+            "Unexpected error during alignment check. Returned value is not a tuple nor False."
+        )
