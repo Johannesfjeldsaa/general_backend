@@ -1,16 +1,20 @@
+"""String utility functions for processing and extracting information."""
+
 import re
+
 from reversclim.utils.general.setup_logging import get_logger
 
 logger = get_logger(__name__)
 
 
 def extract_realization(member_id: str | None = None) -> str | None:
-    """Extract the 'rX' realization part from variant_label, e.g. 'r1i1p1f1' -> 'r1'.
-    Tries several patterns in order to be robust for common CMIP variant_label formats:
+    """Extract the 'rX' realization part from variant_label,
+    e.g. 'r1i1p1f1' -> 'r1'. Tries several patterns in order to
+    be robust for common CMIP variant_label formats:
 
-    - r(\d+)(?=i)   : match 'r1' when it's followed by 'i' (typical 'r1i1p1f1')
-    - r(\d+)\b      : match 'r1' with a word boundary
-    - r(\d+)        : fallback, match first 'r' followed by digits anywhere
+    - r(\\d+)(?=i)   : match 'r1' when it's followed by 'i'(e.g 'r1i1p1f1')
+    - r(\\d+)\b      : match 'r1' with a word boundary
+    - r(\\d+)        : fallback, match first 'r' followed by digits anywhere
 
     Parameters
     ----------
@@ -32,7 +36,7 @@ def extract_realization(member_id: str | None = None) -> str | None:
         if m:
             real = f"r{m.group(1)}"
             logger.debug(
-                "Extracted realization '%s' from member_id '%s' using pattern '%s'.",
+                "Extracted realization '%s' from member_id '%s' with re '%s'.",
                 real,
                 member_id,
                 pat,

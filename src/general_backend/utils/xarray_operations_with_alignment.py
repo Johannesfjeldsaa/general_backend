@@ -1,21 +1,35 @@
-# ---
-# xarray natively supports broadcasting and alignment
-# but can silently drops non-aligned coordinates.
-# To avoid this use these helper functions with align_kwargs = {"join": "exact"}.
-# This will throw an error if there dimensions are not aligned.
-# ---
+"""
+Xarray operations with explicit alignment checking.
+
+This module provides wrapper functions for common xarray operations that ensure
+proper coordinate alignment before performing calculations. Xarray natively
+supports broadcasting and alignment but can silently drop non-aligned
+coordinates. To avoid this, these helper functions use
+align_kwargs = {"join": "exact"} by default, which will raise an error
+if dimensions are not properly aligned.
+The module includes functions for:
+- Checking alignment between multiple xarray objects
+- Performing arithmetic operations with alignment:
+add, subtract, multiply, divide, power
+- Broadcasting with alignment verification
+"""
 
 # ---
 # import packages
 # ---
 import logging
+
 import xarray as xr
 
 # import source code
 
 # setup logging will be 'reversclim.some_module'
 logger = logging.getLogger(__name__)
-
+# align_kwargs default error message
+ALIGN_KWARGS_ERR_MSG = """
+Input xarray objects are not aligned according to
+join='{align_kwargs_values}'.
+"""
 # ---
 # Source code
 # ---
@@ -28,7 +42,8 @@ def _check_align_kwargs(align_kwargs: dict | None) -> dict:
     ----------
     align_kwargs : dict | None
         Dictionary of keyword arguments fed to xr.align() function.
-        If None, the returned align_kwargs will be set to a default {"join": "exact", 'copy': True}.
+        If None, the returned align_kwargs will be set to a default
+        {"join": "exact", 'copy': True}.
 
     Returns
     -------
@@ -54,31 +69,38 @@ def _check_align_kwargs(align_kwargs: dict | None) -> dict:
 def check_alignment(
     *args: xr.DataArray | xr.Dataset, align_kwargs: dict | None = None
 ) -> tuple[xr.DataArray | xr.Dataset, ...] | bool:
-    """Check if multiple xarray objects are aligned according to the specified alignment method.
-    Default kwargs sets xr.align's join to 'exact' to raise an error if coordinates do not match exactly.
-    See xr.align documentation for other options: https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align
+    """Check if multiple xarray objects are aligned according to the
+    specified alignment method. Default kwargs sets xr.align's join to
+    'exact' to raise an error if coordinates do not match exactly.
+    See xr.align documentation for other options:
+    https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align
 
     Parameters
     ----------
     *args : xr.DataArray | xr.Dataset
         Multiple xarray objects to check for alignment.
     align_kwargs : dict, optional
-        Additional keyword arguments to pass to xr.align, default None. If None, defaults to {"join": "exact", 'copy': True}.
-        If a non-None argument is provided, the align_kwargs will override the default.
-        Modify 'join' to change alignment behavior:
+        Additional keyword arguments to pass to xr.align, default None. If
+        None, defaults to {"join": "exact", 'copy': True}.
+        If a non-None argument is provided, the align_kwargs will override the
+        default. Modify 'join' to change alignment behavior:
         * “outer”: use the union of object indexes
         * “inner”: use the intersection of object indexes
         * “left”: use indexes from the first object with each dimension
         * “right”: use indexes from the last object with each dimension
-        * “exact”: instead of aligning, raise ValueError when indexes to be aligned are not equal
-        * “override”: if indexes are of same size, rewrite indexes to be those of the first object with that dimension.
-            Indexes for the same dimension must have the same size in all objects.
-        See xr.align documentation for more details: https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align
+        * “exact”: instead of aligning, raise ValueError when indexes to be
+        aligned are not equal
+        * “override”: if indexes are of same size, rewrite indexes to be
+        those of the first object with that dimension. Indexes for the same
+        dimension must have the same size in all objects.
+        See xr.align documentation for more details:
+        https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align
 
     Returns
     -------
     tuple[xr.DataArray | xr.Dataset, ...] | bool
-        Tuple of aligned objects if all objects are aligned according to the specified method, False otherwise.
+        Tuple of aligned objects if all objects are aligned according to the
+        specified method, False otherwise.
     """
     align_kwargs = _check_align_kwargs(
         align_kwargs
@@ -89,27 +111,33 @@ def check_alignment(
         logger.debug("Aligned datasets sucessfull")
         return aligned
     except ValueError:
-        logger.debug("Aligned datasets failed")
+        logger.debug("Align datasets failed")
         return False
 
 
 def _operation_with_alignment(
-    *args: xr.DataArray | xr.Dataset, operation: str, align_kwargs: dict | None = None
+    *args: xr.DataArray | xr.Dataset,
+    operation: str,
+    align_kwargs: dict | None = None,
 ) -> xr.DataArray | xr.Dataset:
     """Perform an operation on two (or more) xarray objects with alignment.
-    Default kwargs sets xr.align's join to 'exact' to raise an error if coordinates do not match exactly.
-    See xr.align documentation for other options: https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align
+    Default kwargs sets xr.align's join to 'exact' to raise an error if
+    coordinates do not match exactly. See xr.align documentation for other
+    options:
+    https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align
 
     Parameters
     ----------
     *args : xr.DataArray | xr.Dataset
         xarray objects to operate on.
     operation : str
-        Operation to perform. Supported operations: 'add', 'subtract', 'multiply', 'divide', 'power'.
+        Operation to perform. Supported operations:
+        'add', 'subtract', 'multiply', 'divide', 'power'.
     align_kwargs : dict, optional
-        Additional keyword arguments to pass to xr.align, by default None. If None, defaults to {"join": "exact", 'copy': True}.
-        See check_alignment or https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align for details on align_kwargs.
-
+        Additional keyword arguments to pass to xr.align, by default None.
+        If None, defaults to {"join": "exact", 'copy': True}.
+        See xr.align documentation for more details:
+        https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align
 
     Returns
     -------
@@ -123,14 +151,18 @@ def _operation_with_alignment(
         *args, align_kwargs=align_kwargs
     )
     if aligned is False:
-        raise ValueError(
-            "Input xarray objects are not aligned according to join='{align_kwargs.get('join', 'exact')}'."
+        err_msg = ALIGN_KWARGS_ERR_MSG.format(
+            align_kwargs_values=align_kwargs.get("join", "exact")
         )
+        logger.error(err_msg)
+        raise ValueError(err_msg)
     if not isinstance(aligned, tuple):
-        raise ValueError(
-            "Unexpected error during alignment check. Returned value is not a tuple nor False."
+        err_msg = (
+            "Unexpected error during alignment check. "
+            "Returned value is not a tuple nor False."
         )
-
+        logger.error(err_msg)
+        raise ValueError(err_msg)
     cls = type(
         aligned[0]
     )  # type of the first argument (DataArray or Dataset) to use its methods
@@ -161,7 +193,8 @@ def multiply_with_alignment(
     align_kwargs : dict | None, optional
         Additional keyword arguments to pass to xr.align, by default None.
         If None, `{"join": "exact", 'copy': True}` is used.
-        See check_alignment or https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align for details on align_kwargs.
+        See xr.align documentation for more details:
+        https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align
 
     Returns
     -------
@@ -189,7 +222,8 @@ def divide_with_alignment(
     align_kwargs : dict | None, optional
         Additional keyword arguments to pass to xr.align, by default None.
         If None, `{"join": "exact", 'copy': True}` is used.
-        See check_alignment or https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align for details on align_kwargs.
+        See xr.align documentation for more details:
+        https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align
 
     Returns
     -------
@@ -215,14 +249,17 @@ def add_with_alignment(
     align_kwargs : dict | None, optional
         Additional keyword arguments to pass to xr.align, by default None.
         If None, `{"join": "exact", 'copy': True}` is used.
-        See check_alignment or https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align for details on align_kwargs.
+        See xr.align documentation for more details:
+        https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align
 
     Returns
     -------
     xr.DataArray | xr.Dataset
         Result of the addition with aligned coordinates.
     """
-    return _operation_with_alignment(*args, operation="add", align_kwargs=align_kwargs)
+    return _operation_with_alignment(
+        *args, operation="add", align_kwargs=align_kwargs
+    )
 
 
 def subtract_with_alignment(
@@ -241,7 +278,8 @@ def subtract_with_alignment(
     align_kwargs : dict | None, optional
         Additional keyword arguments to pass to xr.align, by default None.
         If None, `{"join": "exact", 'copy': True}` is used.
-        See check_alignment or https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align for details on align_kwargs.
+        See xr.align documentation for more details:
+        https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align
 
     Returns
     -------
@@ -269,14 +307,17 @@ def power_with_alignment(
     align_kwargs : dict | None, optional
         Additional keyword arguments to pass to xr.align, by default None.
         If None, `{"join": "exact", 'copy': True}` is used.
-        See check_alignment or https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align for details on align_kwargs.
+        See xr.align documentation for more details:
+        https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align
 
     Returns
     -------
     xr.DataArray | xr.Dataset
         Result of a raised to the power of b with aligned coordinates.
     """
-    return _operation_with_alignment(a, b, operation="power", align_kwargs=align_kwargs)
+    return _operation_with_alignment(
+        a, b, operation="power", align_kwargs=align_kwargs
+    )
 
 
 def broadcast_with_alignment(
@@ -284,14 +325,16 @@ def broadcast_with_alignment(
     align_kwargs: dict | None = None,
     broadcast_kwargs: dict | None = None,
 ) -> tuple[xr.DataArray | xr.Dataset, ...]:
-    """Broadcast *args using xr.broadcast. First check if all input xarray objects are aligned.
+    """Broadcast *args using xr.broadcast. First check if all input
+    xarray objects are aligned.
 
     Parameters
     ----------
     align_kwargs : dict | None, optional
         Additional keyword arguments to pass to xr.align, by default None.
         If None, `{"join": "exact", 'copy': True}` is used.
-        See check_alignment or https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align for details on align_kwargs.
+        See xr.align documentation for more details:
+        https://docs.xarray.dev/en/latest/generated/xarray.align.html#xarray.align
     broadcast_kwargs : dict | None, optional
         Additional keyword arguments to pass to xr.broadcast, by default None.
         If None, no additional kwargs are passed.
@@ -318,13 +361,18 @@ def broadcast_with_alignment(
         *args, align_kwargs=align_kwargs
     )
     if aligned is False:
-        raise ValueError(
-            "Input xarray objects are not aligned according to the specified method."
+        err_msg = ALIGN_KWARGS_ERR_MSG.format(
+            align_kwargs_values=align_kwargs.get("join", "exact")
         )
+        logger.error(err_msg)
+        raise ValueError(err_msg)
 
     if isinstance(aligned, tuple):
         return xr.broadcast(*aligned, **broadcast_kwargs)
     else:
-        raise ValueError(
-            "Unexpected error during alignment check. Returned value is not a tuple nor False."
+        err_msg = (
+            "Unexpected error during alignment check. "
+            "Returned value is not a tuple nor False."
         )
+        logger.error(err_msg)
+        raise ValueError(err_msg)

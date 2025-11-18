@@ -1,23 +1,40 @@
-# ---
-# setup_logging.py
-#
-# Optional logging configuration utilities for developers that want
-# to configure logging for the reversclim package and its dependencies.
-# For typical end-users, no action is needed as the package will use
-# the root logger's configuration by default. Contents adapted from standard logging practices.
-#
-# Contents:
-# - get_logger: function to get a package-scoped logger.
-# Usecase: logger = get_logger(__name__) in any module to get a logger named 'reversclim.module'.
-# - set_logger_level_for_dependency: function to set logging level for a specific dependency.
-# Usecase: set_logger_level_for_dependency('some_dependency', logging.ERROR)
-# - configure_default_logging: function to configure default logging for the package and root logger.
-# Usecase: configure_default_logging(reversclim_level=logging.INFO, root_level=logging.WARNING)
-#
-# Authors: Johannes Fjeldså
-# ---
+"""Logging configuration utilities for the general_backend package.
+
+This module provides optional logging configuration utilities for developers
+who want to configure logging for the general_backend package and its
+dependencies. For typical end-users, no action is needed as the package will
+use the root logger's configuration by default.
+
+Functions
+---------
+get_logger : function
+    Get a package-scoped logger.
+    Usage: logger = get_logger(__name__)
+
+set_logger_level_for_dependency : function
+    Set logging level for a specific dependency package.
+    Usage: set_logger_level_for_dependency(
+        'some_dependency', logging.ERROR
+    )
+
+configure_default_logging : function
+    Configure default logging for the package and root logger.
+    Usage: configure_default_logging(
+        pckg_level=logging.INFO, root_level=logging.WARNING
+    )
+
+Notes
+-----
+Contents adapted from standard logging practices.
+The module ensures proper logger hierarchy and prevents duplicate log
+messages by managing handler propagation.
+
+Authors
+Johannes Fjeldså
+"""
 
 import logging
+
 from general_backend import PACKAGE_LOGGER_NAME
 
 
@@ -58,7 +75,7 @@ def set_logger_level_for_dependency(dependency_name: str, level: int) -> None:
     logger.setLevel(level)
 
 
-log_config_msg = """
+LOG_CONFIG_MSG = """
 Configuring default logging for general_backend package:
 * Package logger level: {pckg_level}
 * Root logger level: {root_level}
@@ -74,25 +91,27 @@ def configure_default_logging(
     root_level: int = logging.WARNING,
     supress_log_config_msg: bool = False,
 ) -> None:
-    """Configure default logging for the general_backend package and root logger.
+    """Configure default logging for the package and root logger.
 
     Parameters
     ----------
     pckg_level : int, optional
-        Logging level for the general_backend package logger, by default logging.INFO
+        Logging level for the general_backend package logger,
+        by default logging.INFO
     fmt : str, optional
-        Logging format string, by default '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        Logging format string,
+        by default '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     root_level : int, optional
         Logging level for the root logger, by default logging.WARNING
     supress_log_config_msg: bool, optional
         Whether to suppress the logging configuration message, by default False
     """
-    # Configure the root logger centrally. Using basicConfig is the simplest way
-    # to ensure the root handler/level are set consistently.
+    # Configure the root logger centrally. Using basicConfig is the
+    # simplest way to ensure the root handler/level are set consistently.
     logging.basicConfig(level=root_level, format=fmt)
 
-    # Ensure the root logger's level is explicitly set (basicConfig might not change
-    # it if handlers already existed in some environments).
+    # Ensure the root logger's level is explicitly set (basicConfig might
+    # not change it if handlers already existed in some environments).
     root_logger = logging.getLogger()
     root_logger.setLevel(root_level)
 
@@ -121,4 +140,6 @@ def configure_default_logging(
     pkg_logger.propagate = False
 
     if not supress_log_config_msg:
-        print(log_config_msg.format(pckg_level=pckg_level, root_level=root_level))
+        print(
+            LOG_CONFIG_MSG.format(pckg_level=pckg_level, root_level=root_level)
+        )

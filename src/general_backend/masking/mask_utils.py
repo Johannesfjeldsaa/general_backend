@@ -1,32 +1,32 @@
+"""Utility functions for masking data used in plotting diagnostics.
+
+This module provides utility functions for masking data. Used together with
+component masking modules such as atm_masking.py
+
+Resources:
+    https://tutorial.xarray.dev/intermediate/indexing/boolean-masking-indexing.html
+
+Author: Johannes Fjeldså
+"""
+
 from __future__ import annotations  # allow forward references in type hints
 
-# === === === === === === === === === === === === === === === === === ===
-#
-# Description: This module provides utility functions for masking data
-# used in plotting diagnostics. It will mask data:
-# - along a specified dimension in netCDF files.
-# - based on a mask array if provided.
-# - based on surface type if specified.
-# This file is part of the ppe_diag package.
-#
-# Resources: https://tutorial.xarray.dev/intermediate/indexing/boolean-masking-indexing.html
-#
-# Author: Johannes Fjeldså
-#
-# === === === === === === === === === === === === === === === === === ===
-
 import logging
+from pathlib import Path
+from typing import Any, Union
+
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-import matplotlib.pyplot as plt
-
-from pathlib import Path
 from cartopy import crs as ccrs
-from typing import Union
 from xarray.plot.utils import label_from_attrs
 
-from reversclim.utils.general.save_utils import save_figure
-from reversclim.plotting.visual_profile import get_colormap
+from general_backend.logging.setup_logging import get_logger
+from general_backend.plotting.visual_profile import get_colormap
+from general_backend.utils.save_utils import save_figure
+
+# set up logging
+logger = get_logger(__name__)
 
 
 def fix_lon_coord(da: xr.DataArray) -> xr.DataArray:
@@ -65,10 +65,11 @@ def threshold_float_mask(da: xr.DataArray, threshold: float) -> xr.DataArray:
 def _range_mode(
     min_max_tuple: tuple[float, float],
     dim_array: xr.DataArray,
-    dim_min_max: tuple[float, float],
+    dim_min_max: tuple[float, float],  # pylint: disable=unused-argument
     range_mode: str,
 ) -> np.ndarray:
-    """Determines the values to include in a mask based on a specified range mode.
+    """Determines the values to include in a mask based on a
+    specified range mode.
     NOTE: The inclusive modes are not yet implemented, so this function
     currently only supports the 'exclusive' mode.
 
@@ -111,21 +112,25 @@ def _range_mode(
     range_modes = ["inclusive", "exclusive", "inclusive_min", "inclusive_max"]
     if range_mode not in range_modes:
         err_msg = (
-            f"Invalid range_mode '{range_mode}'. " f"Must be one of {range_modes}."
+            f"Invalid range_mode '{range_mode}'. Must be one of {range_modes}."
         )
-        logging.error(err_msg, stack_info=True)
+        logger.error(err_msg, stack_info=True)
         raise ValueError(err_msg)
     if isinstance(min_max_tuple, tuple):
         if len(min_max_tuple) != 2:
-            err_msg = "'min_max_tuple' must contain exactly two elements (min, max)."
-            logging.error(err_msg, stack_info=True)
+            err_msg = (
+                "'min_max_tuple' must contain exactly two elements (min, max)."
+            )
+            logger.error(err_msg, stack_info=True)
             raise ValueError(err_msg)
 
         # Find the values to give to isin based on range_mode
         if "inclusive" in range_mode:
-            # get the bounds by taking the average of the two neighboring midpoints
-            midpoints = dim_array.values
-            logging.warning(
+            # get the bounds by taking the average of the
+            # two neighboring midpoints
+            midpoints = dim_array.values  # noqa: F841
+
+            logger.warning(
                 "Inclusive modes are not yet implemented. "
                 "Using exclusive mode instead."
             )
@@ -141,13 +146,14 @@ def _range_mode(
         # take the values of dim_array that are strictly within the range
         # given by min_max_tuple
         included_values: np.ndarray = dim_array.where(
-            (dim_array > min_max_tuple[0]) & (dim_array < min_max_tuple[1]), drop=True
+            (dim_array > min_max_tuple[0]) & (dim_array < min_max_tuple[1]),
+            drop=True,
         ).values
 
         return included_values
     else:
         err_msg = f"'min_max_tuple' must be a tuple, got {type(min_max_tuple)}"
-        logging.error(err_msg, stack_info=True)
+        logger.error(err_msg, stack_info=True)
         raise TypeError(err_msg)
 
 
@@ -193,9 +199,10 @@ def _create_coord_mask(
     # Type checking
     if not isinstance(values, (np.ndarray, list, tuple)):
         err_msg = (
-            f"{coord_name} must be a numpy array, list, or tuple, got {type(values)}"
+            f"{coord_name} must be a numpy array, "
+            f"list or tuple not {type(values)}"
         )
-        logging.error(err_msg, stack_info=True)
+        logger.error(err_msg, stack_info=True)
         raise TypeError(err_msg)
 
     # Range validation
@@ -207,7 +214,7 @@ def _create_coord_mask(
                 f"All {coord_name} values must be within {valid_range}. "
                 f"Found invalid values: {bad_values}"
             )
-            logging.error(err_msg, stack_info=True)
+            logger.error(err_msg, stack_info=True)
             raise ValueError(err_msg)
 
     # Handle range specification
@@ -252,7 +259,7 @@ def _combine_attributes_masks(
     dict
         Combined attributes dictionary
     """
-    attributes = {}
+    attributes: dict[str, Any] = {}
 
     for mask in masks:
         mask_name = mask.attrs.get("mask_name", "unknown_mask")
@@ -293,14 +300,15 @@ def _combine_attributes_masks(
                 attributes[attr] = f"union of:\n{values_str}"
             else:
                 err_msg = f"Unknown combination_method '{combination_method}'"
-                logging.error(err_msg, stack_info=True)
+                logger.error(err_msg, stack_info=True)
                 raise ValueError(err_msg)
 
     return attributes
 
 
 def intersection_of_masks(*masks: xr.DataArray) -> xr.DataArray:
-    """Combines multiple boolean masks into a single mask using logical AND operation.
+    """Combines multiple boolean masks into a single mask using
+    logical AND operation.
 
     Parameters
     ----------
@@ -320,14 +328,17 @@ def intersection_of_masks(*masks: xr.DataArray) -> xr.DataArray:
         combined_mask = combined_mask & mask
 
     # rebuild all the attributes to reflect the combination
-    attributes = _combine_attributes_masks(*masks, combination_method="intersection")
+    attributes = _combine_attributes_masks(
+        *masks, combination_method="intersection"
+    )
     combined_mask.attrs = attributes
 
     return combined_mask
 
 
 def union_of_masks(*masks: xr.DataArray) -> xr.DataArray:
-    """Combines multiple boolean masks into a single mask using logical OR operation.
+    """Combines multiple boolean masks into a single mask
+    using logical OR operation.
 
     Parameters
     ----------
@@ -391,27 +402,27 @@ def is_where_compatible(
             f"Condition dtype is {cond.dtype} but should be boolean. "
             "Please ensure the condition is a boolean array."
         )
-        logging.error(err_msg, stack_info=True)
+        logger.error(err_msg, stack_info=True)
         if exit_on_error:
             raise TypeError(err_msg)
         return False
     else:
-        logging.debug("Condition is a boolean array.")
+        logger.debug("Condition is a boolean array.")
 
     # Check for broadcastability
     try:
         if isinstance(cond, np.ndarray):
             cond = xr.DataArray(cond)
         xr.broadcast(data, cond)
-        logging.debug("Condition is broadcastable to the data shape.")
-    except Exception:
+        logger.debug("Condition is broadcastable to the data shape.")
+    except (ValueError, TypeError) as e:
         err_msg = (
             "Condition is not broadcastable to the data shape. "
             "Please ensure the condition is compatible with the data shape."
         )
-        logging.exception(err_msg, stack_info=True, exc_info=True)
+        logger.exception(err_msg, stack_info=True, exc_info=True)
         if exit_on_error:
-            raise ValueError(err_msg)
+            raise ValueError(err_msg) from e
         return False
 
     return True
@@ -425,7 +436,8 @@ def is_float_mask_compatible(
     min_value: float = 0.0,
     max_value: float = 1.0,
 ) -> bool:
-    """Checks if a float mask (weights) is compatible with the data for weighted masking.
+    """Checks if a float mask (weights) is compatible with the
+    data for weighted masking.
 
     Parameters
     ----------
@@ -448,7 +460,8 @@ def is_float_mask_compatible(
     TypeError
         If the mask is not a float array.
     ValueError
-        If the mask is not broadcastable to the shape of the data, or values are out of range.
+        If the mask is not broadcastable to the shape of the data,
+        or values are out of range.
 
     Returns
     -------
@@ -456,45 +469,56 @@ def is_float_mask_compatible(
         True if the mask is compatible with the data, False otherwise.
     """
     # Check for float dtype
-    if not hasattr(mask, "dtype") or not np.issubdtype(mask.dtype, np.floating):
-        err_msg = f"Mask dtype is {getattr(mask, 'dtype', None)} but should be a float (weights)."
-        logging.error(err_msg, stack_info=True)
+    if not hasattr(mask, "dtype") or not np.issubdtype(
+        mask.dtype, np.floating
+    ):
+        err_msg = (
+            f"Mask dtype is {getattr(mask, 'dtype', None)} "
+            "but should be a float (weights)."
+        )
+        logger.error(err_msg, stack_info=True)
         if exit_on_error:
             raise TypeError(err_msg)
         return False
-    else:
-        logging.debug("Mask is a float array (weights).")
+
+    logger.debug("Mask is a float array (weights).")
 
     # Check for broadcastability
     try:
         if isinstance(mask, np.ndarray):
             mask = xr.DataArray(mask)
         xr.broadcast(data, mask)
-        logging.debug("Mask is broadcastable to the data shape.")
-    except Exception:
+        logger.debug("Mask is broadcastable to the data shape.")
+    except (ValueError, TypeError) as exc:
         err_msg = "Mask is not broadcastable to the data shape."
-        logging.exception(err_msg, stack_info=True, exc_info=True)
+        logger.exception(err_msg, stack_info=True, exc_info=True)
         if exit_on_error:
-            raise ValueError(err_msg)
+            raise ValueError(err_msg) from exc
         return False
 
     if check_range:
         valid = ((mask >= min_value) & (mask <= max_value)).all()
         if not bool(valid):
             err_msg = (
-                f"Mask values are not all in the range [{min_value}, {max_value}]."
+                f"Mask values are not all in range [{min_value}, {max_value}]."
             )
-            logging.error(err_msg, stack_info=True)
+            logger.error(err_msg, stack_info=True)
             if exit_on_error:
                 raise ValueError(err_msg)
             return False
         else:
-            logging.debug(f"All mask values are within [{min_value}, {max_value}].")
+            logger.debug(
+                "All mask values are all in range [%s, %s].",
+                min_value,
+                max_value,
+            )
 
     return True
 
 
-def _broadcast_mask_to_2d(mask: xr.DataArray, reference: xr.DataArray) -> xr.DataArray:
+def _broadcast_mask_to_2d(
+    mask: xr.DataArray, reference: xr.DataArray
+) -> xr.DataArray:
     """Broadcasts a 1D mask to 2D using a reference dataset.
 
     Parameters
@@ -526,7 +550,8 @@ def visualize_masks(
     Parameters
     ----------
     created_masks : dict[str, xr.DataArray]
-        A dictionary of created masks where keys are mask names and values are DataArrays.
+        A dictionary of created masks where keys are mask names and
+        values are DataArrays.
     output_dir : str | Path | None, optional
         The directory where the visualizations will be saved.
         If None, the visualizations will not be saved to disk.
@@ -543,14 +568,17 @@ def visualize_masks(
     """
     for mask_name, mask in created_masks.items():
 
-        logging.info(f"Visualizing mask: {mask_name}")
+        logger.info("Visualizing mask: %s", mask_name)
 
-        # choose the first entry along all dimensions except for 'lat' and 'lon'
-        # this is to ensure that the mask can be visualized properly
+        # choose the first entry along all dimensions except for
+        # 'lat' and 'lon' this is to ensure that the mask can
+        # be visualized properly
         for dim in mask.dims:
             if dim not in ["lat", "lon"]:
-                logging.debug(
-                    f"Selecting first entry along dimension '{dim}' for mask '{mask_name}'."
+                logger.debug(
+                    "Selecting first entry along dimension '%s'for mask '%s'.",
+                    dim,
+                    mask_name,
                 )
                 mask = mask.isel({dim: 0})
         # Ensure mask is broadcasted to 2D if necessary
@@ -558,18 +586,18 @@ def visualize_masks(
         if any(dim not in mask.dims for dim in ["lat", "lon"]):
             if reference_ds is not None:
                 mask = _broadcast_mask_to_2d(mask, reference_ds)
-                logging.debug(
-                    f"Broadcasted mask '{mask_name}' to 2D using reference dataset."
+                logger.debug(
+                    "Broadcasted mask '%s' to 2D with reference_ds.", mask_name
                 )
             else:
                 warn_msg = (
-                    "Mask does not have 'lat' and 'lon' dimensions and no reference dataset provided. "
-                    "Visualizing the mask in 1D only."
+                    "Mask does not have 'lat' and 'lon' dimensions and no "
+                    "reference_ds provided. Visualizing the mask in 1D only."
                 )
                 if logging.getLogger().isEnabledFor(logging.DEBUG):
-                    logging.warning(warn_msg, stack_info=True)
+                    logger.warning(warn_msg, stack_info=True)
                 else:
-                    logging.warning(warn_msg)
+                    logger.warning(warn_msg)
                 plot_1d = True
 
         # if the mask is a boolean mask we set vmin and vmax to 0 and 1
@@ -586,14 +614,18 @@ def visualize_masks(
             # collapsing the mask along the missing dimension
             # then using the cbar to visualize the value.
             # Determine which dimension is present
+            valid_plotting_dims = ["lat", "lon"]
             if "lat" in mask.dims:
                 x_dim = "lat"
             elif "lon" in mask.dims:
                 x_dim = "lon"
             else:
-                raise ValueError(
-                    f"Mask '{mask_name}' has neither 'lat' nor 'lon' dimensions, cannot plot."
+                err_msg = (
+                    f"Mask '{mask_name}' has none of the valid "
+                    f"plotting dimensions: {','.join(valid_plotting_dims)}."
                 )
+                logger.error(err_msg, stack_info=True)
+                raise ValueError(err_msg)
 
             x = mask[x_dim]
             values = mask.values
@@ -620,12 +652,15 @@ def visualize_masks(
             )
 
             mask_info["Note"] = (
-                "This mask was visualized in 1D because it does not have both 'lat' and 'lon' dimensions. "
-                "The values are repeated vertically for visualization."
+                "This mask was visualized in 1D because it does not "
+                "have both 'lat' and 'lon' dimensions. The values are "
+                "repeated vertically for visualization."
             )
 
         else:
-            fig, ax = plt.subplots(subplot_kw={"projection": ccrs.PlateCarree()})
+            fig, ax = plt.subplots(
+                subplot_kw={"projection": ccrs.PlateCarree()}
+            )
 
             mask.plot(
                 ax=ax,
@@ -645,14 +680,36 @@ def visualize_masks(
             file_name = f"{mask_name.replace('&', '_')}_mask_visualization.png"
             output_path = Path(output_dir).joinpath(file_name)
             save_figure(fig, output_path, overwrite="prompt")
-            logging.info(
-                f"Visualization of mask {mask_name} saved to file {output_path.name} in directory {output_path.parent}."
+            logger.info(
+                "Visualization of mask %s saved to file %s in directory %s.",
+                output_path.name,
+                output_path.name,
+                output_path.parent,
             )
         else:
             plt.show()
 
 
-def apply_mask(da: xr.DataArray, var: str, mask: xr.DataArray) -> xr.Dataset | None:
+def apply_mask(
+    da: xr.DataArray, var: str, mask: xr.DataArray
+) -> xr.Dataset | None:
+    """Apply a mask to a DataArray and return as a
+    Dataset with updated attributes.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        The DataArray to be masked.
+    var : str
+        The name of the variable in the resulting Dataset.
+    mask : xr.DataArray
+        The mask to apply to the DataArray.
+
+    Returns
+    -------
+    xr.Dataset | None
+        The masked Dataset with updated attributes, or None if an error occurs.
+    """
     try:
         masked_da = da.where(mask)
         ds = masked_da.to_dataset(name=var)
@@ -665,5 +722,6 @@ def apply_mask(da: xr.DataArray, var: str, mask: xr.DataArray) -> xr.Dataset | N
         )
         ds.attrs["mask_description"] = mask_attrs.get("mask_description", "")
         return ds
-    except Exception as e:
-        logging.error(f"Error applying mask: {e}")
+    except (ValueError, TypeError, KeyError) as e:
+        logger.error("Error applying mask: %s", e)
+        return None
