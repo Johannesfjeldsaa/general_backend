@@ -6,11 +6,11 @@ for setting matplotlib and seaborn styles, managing colormaps, and
 ensuring visual consistency across the project.
 """
 
-from typing import Literal
+from typing import Any, Literal
 
-import cmocean
+import cmocean  # type: ignore[import-untyped]
 import matplotlib.pyplot as plt
-import seaborn as sns
+import seaborn as sns  # type: ignore[import-untyped]
 
 from general_backend.logging.setup_logging import get_logger
 
@@ -22,7 +22,7 @@ def set_mpl_sns_style(
         "ticks", "whitegrid", "darkgrid", "white", "dark"
     ] = "ticks",
     context: Literal["notebook", "paper", "talk", "poster"] = "notebook",
-):
+) -> None:
     """Set the style for matplotlib and seaborn plots.
 
     Parameters
@@ -39,7 +39,7 @@ def set_mpl_sns_style(
         See seaborn documentation for available contexts:
         https://seaborn.pydata.org/generated/seaborn.plotting_context.html#seaborn.plotting_context
     """
-    sns.set_theme(context=context, style=style, font_scale=1.2)
+    sns.set_theme(context=context, style=style, font_scale=1)
     plt.style.use(f"seaborn-v0_8-{style}")
     plt.rcParams.update(
         {
@@ -55,7 +55,7 @@ def set_mpl_sns_style(
     )
 
 
-def get_colormap(key: str):
+def get_colormap(key: str) -> Any:
     """Get a colormap based on what you want to visualize.
 
     Parameters
