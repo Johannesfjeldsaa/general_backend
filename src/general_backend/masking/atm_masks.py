@@ -365,11 +365,11 @@ mask_latbnds_mapping = {
 
 
 def _create_an_implemented_mask(
-    dataset: xr.Dataset,
-    mask_name: str,
-    landfrac_mask: xr.DataArray | None = None,
+    dataset:        xr.Dataset,
+    mask_name:      str,
+    landfrac_mask:  xr.DataArray | None = None,
     oceanfrac_mask: xr.DataArray | None = None,
-):
+) -> xr.DataArray:
     """
     Create a mask based on the provided mask name.
 
@@ -384,6 +384,12 @@ def _create_an_implemented_mask(
     -------
     xr.DataArray
         The created mask as a boolean DataArray.
+
+    Raises
+    ------
+    ValueError
+        If the mask_name is not implemented or if required data for
+        land/ocean masks is not provided.
     """
     if mask_name == "global":
         # same lat and lon as dataset
@@ -450,70 +456,70 @@ def _create_an_implemented_mask(
 
 
 def create_masks(
-    dataset: xr.Dataset,
-    masks: list[str],
-    landfrac_mask: xr.DataArray | None = None,
+    dataset:        xr.Dataset,
+    masks:          list[str],
+    landfrac_mask:  xr.DataArray | None = None,
     oceanfrac_mask: xr.DataArray | None = None,
-):
-    """_summary_
+) -> dict[str, xr.DataArray]:
+    """Create multiple masks based on the provided list of mask names.
 
     Parameters
     ----------
     dataset : xr.Dataset
-        _description_
+        The dataset to create the masks for.
     masks : list[str]
-        _description_
+        A list of mask names to create.
     landfrac_mask : xr.DataArray | None, optional
-        _description_, by default None
+        Land fraction mask data, by default None
     oceanfrac_mask : xr.DataArray | None, optional
-        _description_, by default None
+        Ocean fraction mask data, by default None
 
     Returns
     -------
-    _type_
-        _description_
+    dict[str, xr.DataArray]
+        A dictionary mapping mask names to the created masks.
 
     Raises
     ------
     ValueError
-        _description_
+        If a mask name is not implemented or a combination mask is invalid.
     TypeError
-        _description_
+        If a mask name is not a string.
     ValueError
-        _description_
+        If there is an error combining masks.
     """
     created_masks = {}
     and_masks = []
     or_masks = []
     for mask in masks:
-        if isinstance(mask, str):
-            if mask in implemented_masks:
-                logger.info("Attempting to create mask %s", mask)
-
-                created_masks[mask] = _create_an_implemented_mask(
-                    dataset,
-                    mask,
-                    landfrac_mask=landfrac_mask,
-                    oceanfrac_mask=oceanfrac_mask,
-                )
-                logger.info("Created mask %s", mask)
-            else:
-                # check if it is a combination mask
-                if "&" in mask:
-                    and_masks.append(mask)
-                elif "|" in mask:
-                    or_masks.append(mask)
-                else:
-                    err_msg = (
-                        f"Mask '{mask}' is not implemented and "
-                        "is not a combination mask."
-                    )
-                    logger.error(err_msg, stack_info=True)
-                    raise ValueError(err_msg)
-        else:
+        if not isinstance(mask, str):
             err_msg = f"Mask '{mask}' is not a string."
             logger.error(err_msg, stack_info=True)
             raise TypeError(err_msg)
+
+        if mask in implemented_masks:
+            logger.info("Attempting to create mask %s", mask)
+
+            created_masks[mask] = _create_an_implemented_mask(
+                dataset,
+                mask,
+                landfrac_mask=landfrac_mask,
+                oceanfrac_mask=oceanfrac_mask,
+            )
+            logger.info("Created mask %s", mask)
+        else:
+            # check if it is a combination mask
+            if "&" in mask:
+                and_masks.append(mask)
+            elif "|" in mask:
+                or_masks.append(mask)
+            else:
+                err_msg = (
+                    f"Mask '{mask}' is not implemented and "
+                    "is not a combination mask."
+                )
+                logger.error(err_msg, stack_info=True)
+                raise ValueError(err_msg)
 
     for mask_string, operation in zip(
         [*and_masks, *or_masks], ["&"] * len(and_masks) + ["|"] * len(or_masks)
@@ -538,14 +544,13 @@ def create_masks(
         # combine the masks
         try:
             if operation == "|":
-                created_masks[mask_string] = union_of_masks(
-                    *[created_masks[m] for m in mask_tuple]
-                )
+                mask_list = [created_masks[m] for m in mask_tuple]
+                created_masks[mask_string] = union_of_masks(*mask_list)
                 logger.info("Create mask %s", mask_string)
             elif operation == "&":
-                created_masks[mask_string] = intersection_of_masks(
-                    *[created_masks[m] for m in mask_tuple]
-                )
+                mask_list = [created_masks[m] for m in mask_tuple]
+                created_masks[mask_string] = intersection_of_masks(*mask_list)
+                created_masks[mask_string] = intersection_of_masks(*mask_list)
                 logger.info("Create mask %s", mask_string)
         except Exception as err:
             mask_tuple_as_str = ";".join(

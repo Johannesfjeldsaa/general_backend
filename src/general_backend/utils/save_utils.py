@@ -30,7 +30,7 @@ def validate_file(
     expected_suffix: str | list[str],
     description: str,
     new_file: bool,
-):
+) -> None:
     """Validate if a file has: 1) expected suffixes, 2) if it exists
     when new_file is False.
 

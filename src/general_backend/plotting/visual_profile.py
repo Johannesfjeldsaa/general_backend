@@ -85,12 +85,17 @@ def get_colormap(key: str) -> Any:
     # Map variable names to appropriate cmocean colormaps
     mapping = {
         "heatmap_diverging": cmocean.tools.crop_by_percent(
-            cmocean.cm.curl, 20, which="both", N=None
+            cmocean.cm.curl,
+            20,
+            which="both",
+            N=None,
         ),
         "heatmap_positive": cmocean.cm.matter,
         "diff": cmocean.cm.diff,
         "anomaly": cmocean.cm.tarn,
-        "mask_visualization": cmocean.tools.lighten(cmocean.cm.haline, 0.5),
+        "mask_visualization": cmocean.tools.lighten(
+            cmocean.cm.haline, 0.5
+        ),
     }
     if key in mapping:
         return mapping[key]

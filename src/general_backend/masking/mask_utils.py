@@ -13,12 +13,13 @@ from __future__ import annotations  # allow forward references in type hints
 
 import logging
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 import matplotlib.pyplot as plt
+from general_backend.utils.xarray_operations_with_alignment import broadcast_with_alignment, multiply_with_alignment
 import numpy as np
 import xarray as xr
-from cartopy import crs as ccrs
+import cartopy.crs as ccrs
 from xarray.plot.utils import label_from_attrs
 
 from general_backend.logging.setup_logging import get_logger
@@ -242,9 +243,9 @@ def _create_coord_mask(
 
 
 def _combine_attributes_masks(
-    *masks: xr.DataArray,  # Corrected type annotation (DataArrays, not paths)
+    *masks:             xr.DataArray,
     combination_method: str,
-) -> dict:
+) -> dict[str, str]:
     """Combine attributes from multiple masks into a single dictionary.
 
     Parameters
@@ -365,9 +366,9 @@ def union_of_masks(*masks: xr.DataArray) -> xr.DataArray:
 
 
 def is_where_compatible(
-    data: Union[xr.DataArray, xr.Dataset],
-    cond: Union[xr.DataArray, np.ndarray],
-    exit_on_error: bool = True,
+    data:           xr.DataArray | xr.Dataset,
+    cond:           xr.DataArray | np.ndarray,
+    exit_on_error:  bool = True,
 ) -> bool:
     """
     Checks if a condition is compatible with the data for masking.
@@ -429,12 +430,12 @@ def is_where_compatible(
 
 
 def is_float_mask_compatible(
-    data: xr.DataArray,
-    mask: xr.DataArray | np.ndarray,
-    exit_on_error: bool = True,
-    check_range: bool = True,
-    min_value: float = 0.0,
-    max_value: float = 1.0,
+    data:           xr.DataArray,
+    mask:           xr.DataArray | np.ndarray,
+    exit_on_error:  bool = True,
+    check_range:    bool = True,
+    min_value:      float = 0.0,
+    max_value:      float = 1.0
 ) -> bool:
     """Checks if a float mask (weights) is compatible with the
     data for weighted masking.
@@ -517,7 +518,8 @@ def is_float_mask_compatible(
 
 
 def _broadcast_mask_to_2d(
-    mask: xr.DataArray, reference: xr.DataArray
+    mask:       xr.DataArray,
+    reference:  xr.DataArray
 ) -> xr.DataArray:
     """Broadcasts a 1D mask to 2D using a reference dataset.
 
@@ -539,8 +541,8 @@ def _broadcast_mask_to_2d(
 
 
 def visualize_masks(
-    created_masks: dict[str, xr.DataArray],
-    output_dir: str | Path | None = None,
+    created_masks:  dict[str, xr.DataArray],
+    output_dir:     str | Path | None = None,
     reference_ds: xr.DataArray | None = None,
 ) -> None:
     """Visualizes the created masks using xarray's plotting capabilities.
@@ -607,7 +609,7 @@ def visualize_masks(
             vmin, vmax = mask.min().item(), mask.max().item()
 
         auto_title = label_from_attrs(mask)
-        mask_info: dict = mask.attrs
+        mask_info = mask.attrs
         if plot_1d:
             # since the mask is 1D, we can not plot it on a map
             # rather we plot it as a function of the latitude or longitude
@@ -689,39 +691,79 @@ def visualize_masks(
         else:
             plt.show()
 
-
-def apply_mask(
-    da: xr.DataArray, var: str, mask: xr.DataArray
-) -> xr.Dataset | None:
-    """Apply a mask to a DataArray and return as a
-    Dataset with updated attributes.
+from general_backend.utils.xarray_operations_with_alignment import ensure_DataArray
+def mask_region(
+    da:             xr.DataArray,
+    region_mask:    xr.DataArray,
+    mask_type:      str = "boolean"
+) -> xr.DataArray:
+    """Masks a DataArray with a region mask DataArray
 
     Parameters
     ----------
     da : xr.DataArray
-        The DataArray to be masked.
-    var : str
-        The name of the variable in the resulting Dataset.
-    mask : xr.DataArray
-        The mask to apply to the DataArray.
+        The data array to mask
+    region_mask : xr.DataArray
+        The region mask to apply
+    mask_type : str, optional
+        The type of mask to apply. Available options are:
+        'boolean' : region_mask is boolean, True for region to keep
+        'binary' : region_mask is binary, 1 for region to keep
+        'inverse_boolean' : region_mask is boolean, True for region to mask
+        'inverse_binary' : region_mask is binary, 1 for region to mask
+        'float' : region_mask is float, multiply da with region_mask
+    By default "boolean"
+
+    raises
+    ------
+    ValueError
+        If mask_type is not recognized.
 
     Returns
     -------
-    xr.Dataset | None
-        The masked Dataset with updated attributes, or None if an error occurs.
+    xr.DataArray
+        The masked data array
     """
-    try:
-        masked_da = da.where(mask)
-        ds = masked_da.to_dataset(name=var)
-        da_attrs = da.attrs
-        mask_attrs = mask.attrs
-        ds.attrs["comment"] = (
-            da_attrs.get("comment", "")
-            + ". Masked using: "
-            + mask_attrs.get("mask_type", "")
+    da = ensure_DataArray(da)
+    region_mask = ensure_DataArray(region_mask)
+    broadcasted_tuple = broadcast_with_alignment(
+        da, region_mask, align_kwargs={"join": "exact"}
+    )
+    broadcasted_mask = ensure_DataArray(broadcasted_tuple[1])
+
+    if mask_type == "boolean":
+        if not is_where_compatible(
+            da, broadcasted_mask, exit_on_error=False
+        ):
+            err_msg = "Boolean region_mask is not compatible with data array."
+            logger.error(err_msg)
+            raise ValueError(err_msg)
+        da_masked = da.where(broadcasted_mask)
+    elif mask_type == "binary":
+        da_masked = da.where(broadcasted_mask == 1)
+    elif mask_type == "inverse_boolean":
+        da_masked = da.where(~broadcasted_mask)
+    elif mask_type == "inverse_binary":
+        da_masked = da.where(broadcasted_mask != 1)
+    elif mask_type == "float":
+        if not is_float_mask_compatible(
+            da, broadcasted_mask, exit_on_error=False
+        ):
+            err_msg = "Float region_mask is not compatible with data array."
+            logger.error(err_msg)
+            raise ValueError(err_msg)
+        da_masked = multiply_with_alignment(
+            da, broadcasted_mask, align_kwargs={"join": "exact"}
         )
-        ds.attrs["mask_description"] = mask_attrs.get("mask_description", "")
-        return ds
-    except (ValueError, TypeError, KeyError) as e:
-        logger.error("Error applying mask: %s", e)
-        return None
+    else:
+        err_msg = f"mask_type {mask_type} not recognized. Valid options are:\n"
+        "'boolean', 'binary', 'inverse_boolean', 'inverse_binary', 'float'."
+        logger.error(err_msg)
+        raise ValueError(err_msg)
+
+    if not isinstance(da_masked, xr.DataArray):
+        err_msg = "Masked data is not an xarray DataArray."
+        logger.error(err_msg)
+        raise ValueError(err_msg)
+
+    return da_masked

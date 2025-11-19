@@ -18,6 +18,7 @@ add, subtract, multiply, divide, power
 # import packages
 # ---
 import logging
+from typing import Any
 
 import xarray as xr
 
@@ -35,7 +36,7 @@ join='{align_kwargs_values}'.
 # ---
 
 
-def _check_align_kwargs(align_kwargs: dict | None) -> dict:
+def _check_align_kwargs(align_kwargs: dict[str, Any] | None) -> dict[str, Any]:
     """Check and set default alignment kwargs. Local helper function.
 
     Parameters
@@ -67,7 +68,8 @@ def _check_align_kwargs(align_kwargs: dict | None) -> dict:
 
 
 def check_alignment(
-    *args: xr.DataArray | xr.Dataset, align_kwargs: dict | None = None
+    *args:          xr.DataArray | xr.Dataset,
+    align_kwargs:   dict[str, Any] | None = None
 ) -> tuple[xr.DataArray | xr.Dataset, ...] | bool:
     """Check if multiple xarray objects are aligned according to the
     specified alignment method. Default kwargs sets xr.align's join to
@@ -116,9 +118,9 @@ def check_alignment(
 
 
 def _operation_with_alignment(
-    *args: xr.DataArray | xr.Dataset,
-    operation: str,
-    align_kwargs: dict | None = None,
+    *args:          xr.DataArray | xr.Dataset,
+    operation:      str,
+    align_kwargs:   dict[str, Any] | None = None,
 ) -> xr.DataArray | xr.Dataset:
     """Perform an operation on two (or more) xarray objects with alignment.
     Default kwargs sets xr.align's join to 'exact' to raise an error if
@@ -181,8 +183,8 @@ def _operation_with_alignment(
 
 
 def multiply_with_alignment(
-    *args: xr.DataArray | xr.Dataset,
-    align_kwargs: dict | None = None,
+    *args:          xr.DataArray | xr.Dataset,
+    align_kwargs:   dict[str, Any] | None = None,
 ) -> xr.DataArray | xr.Dataset:
     """Multiply two or more xarray objects with alignment.
 
@@ -207,9 +209,9 @@ def multiply_with_alignment(
 
 
 def divide_with_alignment(
-    a: xr.DataArray | xr.Dataset,
-    b: xr.DataArray | xr.Dataset,
-    align_kwargs: dict | None = None,
+    a:              xr.DataArray | xr.Dataset,
+    b:              xr.DataArray | xr.Dataset,
+    align_kwargs:   dict[str, Any] | None = None,
 ) -> xr.DataArray | xr.Dataset:
     """Divide one xarray object by another with alignment.
 
@@ -237,8 +239,8 @@ def divide_with_alignment(
 
 
 def add_with_alignment(
-    *args: xr.DataArray | xr.Dataset,
-    align_kwargs: dict | None = None,
+    *args:          xr.DataArray | xr.Dataset,
+    align_kwargs:   dict[str, Any] | None = None,
 ) -> xr.DataArray | xr.Dataset:
     """Add two or more xarray objects with alignment.
 
@@ -263,9 +265,9 @@ def add_with_alignment(
 
 
 def subtract_with_alignment(
-    a: xr.DataArray | xr.Dataset,
-    b: xr.DataArray | xr.Dataset,
-    align_kwargs: dict | None = None,
+    a:              xr.DataArray | xr.Dataset,
+    b:              xr.DataArray | xr.Dataset,
+    align_kwargs:   dict[str, Any] | None = None,
 ) -> xr.DataArray | xr.Dataset:
     """Subtract one xarray object from another one with alignment.
 
@@ -292,9 +294,9 @@ def subtract_with_alignment(
 
 
 def power_with_alignment(
-    a: xr.DataArray | xr.Dataset,
-    b: xr.DataArray | xr.Dataset,
-    align_kwargs: dict | None = None,
+    a:              xr.DataArray | xr.Dataset,
+    b:              xr.DataArray | xr.Dataset,
+    align_kwargs:   dict[str, Any] | None = None,
 ) -> xr.DataArray | xr.Dataset:
     """Raise one xarray object to the power of another with alignment.
 
@@ -321,9 +323,9 @@ def power_with_alignment(
 
 
 def broadcast_with_alignment(
-    *args: xr.DataArray | xr.Dataset,
-    align_kwargs: dict | None = None,
-    broadcast_kwargs: dict | None = None,
+    *args:              xr.DataArray | xr.Dataset,
+    align_kwargs:       dict[str, Any] | None = None,
+    broadcast_kwargs:   dict[str, Any] | None = None,
 ) -> tuple[xr.DataArray | xr.Dataset, ...]:
     """Broadcast *args using xr.broadcast. First check if all input
     xarray objects are aligned.
@@ -376,3 +378,50 @@ def broadcast_with_alignment(
         )
         logger.error(err_msg)
         raise ValueError(err_msg)
+
+def ensure_DataArray(
+    data: xr.DataArray | xr.Dataset
+) -> xr.DataArray:
+    """Ensure the input is an xarray DataArray. If a Dataset is provided,
+    convert it to a DataArray if there is only one variable in the Dataset.
+    if multiple variables are present, throw an error.
+
+    Parameters
+    ----------
+    data : xr.DataArray | xr.Dataset
+        Input xarray object.
+
+    Returns
+    -------
+    xr.DataArray
+        The input as a DataArray.
+
+    Raises
+    ------
+    TypeError
+        If the input is neither a DataArray nor a Dataset.
+    """
+    if isinstance(data, xr.DataArray):
+        return data
+    elif isinstance(data, xr.Dataset):
+        if len(data.data_vars) != 1:
+            err_msg = (
+                "Input Dataset has multiple variables. "
+                "Cannot convert to DataArray."
+            )
+            logger.error(err_msg)
+            raise ValueError(err_msg)
+        first_var = list(data.data_vars.keys())[0]
+        logger.debug(
+            "Input is a Dataset. Converting to DataArray by selecting "
+            "the first variable: %s",
+            first_var,
+        )
+        return data[first_var]
+    else:
+        err_msg = (
+            f"Input must be an xarray DataArray or Dataset, "
+            f"got {type(data).__name__} instead."
+        )
+        logger.error(err_msg)
+        raise TypeError(err_msg)

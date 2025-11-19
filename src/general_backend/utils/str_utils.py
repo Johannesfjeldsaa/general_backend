@@ -7,7 +7,9 @@ from general_backend.logging.setup_logging import get_logger
 logger = get_logger(__name__)
 
 
-def extract_realization(member_id: str | None = None) -> str | None:
+def extract_realization(
+    member_id: str | None = None, return_as: str = "str"
+) -> str | int | None:
     """Extract the 'rX' realization part from variant_label,
     e.g. 'r1i1p1f1' -> 'r1'. Tries several patterns in order to
     be robust for common CMIP variant_label formats:
@@ -20,11 +22,16 @@ def extract_realization(member_id: str | None = None) -> str | None:
     ----------
     member_id : str | None
         The member_id or variant_label string to extract from.
+    return_as : str | int | None
+        If 'int', returns the realization number as an integer (e.g. 1).
+        If 'str', returns the realization as a string (e.g. 'r1').
+        Default is 'str'.
 
     Returns
     -------
-    str | None
-        The extracted realization string (e.g. 'r1').
+    str | int | None
+        The extracted realization string (e.g. 'r1'), integer (e.g. 1),
+        or None if not found.
     """
     if not member_id:
         logger.debug("No member_id provided for realization extraction.")
@@ -41,6 +48,9 @@ def extract_realization(member_id: str | None = None) -> str | None:
                 member_id,
                 pat,
             )
+            if return_as == "int":
+                return int(m.group(1))
+
             return real
 
     logger.warning("No realization found in member_id '%s'.", member_id)
